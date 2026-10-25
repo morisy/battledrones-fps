@@ -31,6 +31,7 @@ import { AIR_H, type P3, type View } from "../game/three/view";
 import { FpsHud, type Marker } from "./hud";
 import { FpsInput } from "./input";
 import { Shots, Viewmodel } from "./gun";
+import { buzz, loadFpsSettings, saveFpsSettings, type FpsSettings } from "./settings";
 
 /**
  * Frontline (FRONTLINE.md): the RTS battle seen and fought from inside one of
@@ -141,6 +142,10 @@ export class FpsScene {
   private deathAt: { x: number; y: number; by: string | null } | null = null;
   private uplinkNames = new Map<number, string>();
   private difficulty: Difficulty;
+  private settings: FpsSettings;
+  /** The enemy the aim assist is holding on (null: none near the crosshair). */
+  private assistId: number | null = null;
+  private lastBuzz = 0;
 
   constructor(parent: HTMLElement, dpr: number, art: TerrainArt | null) {
     document.getElementById("loading")?.remove();
@@ -233,6 +238,8 @@ export class FpsScene {
 
     const hudRoot = document.getElementById("hud")!;
     this.input = new FpsInput(this.stage.canvas, hudRoot);
+    this.settings = loadFpsSettings(this.input.touch);
+    this.input.sens = this.settings.sens;
     this.hud = new FpsHud(hudRoot, w, {
       start: () => this.start(),
       resume: () => this.resume(),
@@ -248,7 +255,13 @@ export class FpsScene {
       deploy: (at) => this.deploy(at),
       buy: (id) => this.buy(id),
       request: (k) => this.request(k),
-      closeArmory: () => this.armory(false)
+      closeArmory: () => this.armory(false),
+      pause: () => this.pause(true),
+      setting: (k, v) => {
+        (this.settings as unknown as Record<string, unknown>)[k] = v;
+        this.input.sens = this.settings.sens;
+        saveFpsSettings(this.settings);
+      }
     }, this.input.touch);
     this.hud.intro({
       map: mapById(gameMode.mapId).name,
@@ -296,6 +309,16 @@ export class FpsScene {
     sfx.play("squad", 0.6);
     this.input.lock();
     this.hud.feed("Deployed. Fireteam: <em>follow me</em>", "good");
+    if (this.input.touch) {
+      // phones play sideways: ask for landscape (Android, in full screen), and say so where it can't be forced
+      try {
+        const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+        o.lock?.("landscape").catch(() => {});
+      } catch {
+        /* no orientation lock */
+      }
+      if (this.stage.rig.height > this.stage.rig.width) this.hud.feed("↻ Turn your phone sideways for a wider view", "gold");
+    }
   }
 
   private onLockChange = (): void => {
@@ -305,8 +328,9 @@ export class FpsScene {
   };
 
   private pause(on: boolean): void {
+    if (on && (!this.started || this.ended)) return;
     this.paused = on;
-    this.hud.pause(on);
+    this.hud.pause(on, this.settings);
     if (on) this.input.unlock();
   }
 
@@ -426,8 +450,11 @@ export class FpsScene {
     const s = w.frontline!;
     const a = avatarOf(w)!;
     const zoom = 1 + (weaponStats(s, this.weapon).zoom - 1) * this.ads;
-    this.yaw += inp.lookX / zoom;
-    this.pitch = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, this.pitch - inp.lookY / zoom));
+    // aim assist (touch by default): the crosshair slows over an enemy and drifts onto it
+    const held = this.settings.assist ? this.assist(dt) : false;
+    const friction = held ? 0.55 : 1;
+    this.yaw += (inp.lookX * friction) / zoom;
+    this.pitch = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, this.pitch - (inp.lookY * friction) / zoom));
     lookAvatar(w, this.yaw, this.pitch);
 
     // walk (no sprinting while aiming or shooting)
@@ -465,9 +492,13 @@ export class FpsScene {
     }
     const st = weaponStats(s, this.weapon);
     if (inp.actions.has("reload")) this.startReload();
-    if (inp.fire && !sprint && this.reloading <= 0 && this.cooldown <= 0) {
+    // auto-fire: the trigger pulls itself while the crosshair is on an enemy in range (not with rockets: they're precious)
+    const auto = this.settings.autoFire && this.weapon !== "launcher" && this.onTarget(st.range);
+    if ((inp.fire || auto) && !sprint && this.reloading <= 0 && this.cooldown <= 0) {
       if (s.mag[this.weapon] > 0) this.fire(st, moving);
       else this.startReload();
+    } else if (!inp.fire && this.settings.autoFire && s.mag[this.weapon] === 0 && this.reloading <= 0 && this.weapon !== "launcher") {
+      this.startReload();
     }
     if (inp.actions.has("grenade")) this.throwGrenade();
 
@@ -503,9 +534,64 @@ export class FpsScene {
       const at = src ? ("tx" in src ? buildingCenter(src) : src) : null;
       const ang = at ? Math.atan2(at.x - a.x, -(at.y - a.y)) - this.yaw : Math.PI;
       this.hud.hurt(ang, (this.lastHp - a.hp) / UNITS.trooper.hp);
+      const now = performance.now();
+      if (now - this.lastBuzz > 350) {
+        this.lastBuzz = now;
+        buzz(this.settings, Math.min(60, 15 + (this.lastHp - a.hp) * 2));
+      }
       this.shake = Math.min(1, this.shake + (this.lastHp - a.hp) / 60);
     }
     this.lastHp = a.hp;
+  }
+
+  /**
+   * Aim assist: the enemy nearest the crosshair within a small cone (wider up
+   * close), in range and in sight. The view drifts onto it, a little faster
+   * the further off it is; returns whether one is held (the look then slows).
+   */
+  private assist(dt: number): boolean {
+    const w = this.world;
+    const c = this.cam.position;
+    const range = weaponStats(w.frontline!, this.weapon).range;
+    let best: { id: number; yaw: number; pitch: number; err: number } | null = null;
+    for (const u of w.units.values()) {
+      if (u.faction === SIDE || u.hp <= 0 || concealedFrom(w, SIDE, u)) continue;
+      const p = this.entities.pos(u.id);
+      if (!p) continue;
+      const dx = p.x - c.x;
+      const dz = p.y - c.z;
+      const flat = Math.hypot(dx, dz);
+      if (flat > range || flat < 0.3) continue;
+      const yaw = Math.atan2(dx, -dz);
+      const pitch = Math.atan2((p.h + p.top) / 2 - c.y, flat);
+      let dy = yaw - this.yaw;
+      dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      const err = Math.hypot(dy, pitch - this.pitch);
+      const cone = Math.min(0.2, 0.06 + 0.5 / flat);
+      if (err > cone || (best && err >= best.err)) continue;
+      best = { id: u.id, yaw: this.yaw + dy, pitch, err };
+    }
+    if (best) {
+      // in sight? (not through a hill)
+      _d.set(Math.sin(best.yaw) * Math.cos(best.pitch), Math.sin(best.pitch), -Math.cos(best.yaw) * Math.cos(best.pitch));
+      const ground = this.raycast(c, _d, range, true);
+      const u = w.units.get(best.id)!;
+      if (ground && ground.t < Math.hypot(u.x - c.x, u.y - c.z) - 0.4) best = null;
+    }
+    this.assistId = best?.id ?? null;
+    if (!best) return false;
+    const k = Math.min(1, dt * (2.5 + best.err * 20));
+    let dy = best.yaw - this.yaw;
+    dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    this.yaw += dy * k * 0.5;
+    this.pitch += (best.pitch - this.pitch) * k * 0.5;
+    return true;
+  }
+
+  /** Is the crosshair (no spread) on an enemy within `range`? */
+  private onTarget(range: number): boolean {
+    const hit = this.aimRay(range, false);
+    return !!hit && hit.id !== null && isFoe(this.world, hit.id) && !!this.world.units.get(hit.id);
   }
 
   private equip(id: WeaponId): boolean {
@@ -787,6 +873,7 @@ export class FpsScene {
       switch (e.type) {
         case "kill":
           this.hud.feed(`✖ ${e.name} <em>+${e.rp} RP</em>`, "good");
+          buzz(this.settings, [12, 40, 12]);
           sfx.play("kill", 0.5);
           break;
         case "teamKill":
@@ -871,7 +958,10 @@ export class FpsScene {
     }
     const zoom = 1 + (weaponStats(w.frontline!, this.weapon).zoom - 1) * this.ads;
     const sprintKick = 1 + Math.max(0, this.stride - 1) * 0.08;
-    const fov = FOV / zoom * sprintKick;
+    // a tall (portrait) screen keeps a playable width of view: about 80° across
+    const aspect = this.stage.rig.width / Math.max(1, this.stage.rig.height);
+    const base = aspect < 1.25 ? Math.min(100, (2 * Math.atan(Math.tan((80 * Math.PI) / 360) / aspect) * 180) / Math.PI) : FOV;
+    const fov = base / zoom * sprintKick;
     if (Math.abs(c.fov - fov) > 0.01) {
       c.fov = fov;
       c.updateProjectionMatrix();
@@ -949,6 +1039,7 @@ export class FpsScene {
       ads: this.ads,
       scoped,
       spread: this.spread(this.stride > 0.2),
+      onEnemy: !!a && this.assistId !== null,
       secs: this.simSeconds,
       supply,
       prompt,
@@ -1075,5 +1166,6 @@ function rayBox(o: THREE.Vector3, d: THREE.Vector3, x0: number, y0: number, z0: 
     tmax = Math.min(tmax, t1);
     if (tmin > tmax) return null;
   }
-  return tmin;
+  // (starting inside the box: not a hit — the camera never stands in a building)
+  return tmin > 0 ? tmin : null;
 }

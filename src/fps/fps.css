@@ -405,14 +405,18 @@
 .fps-armory .up.owned { opacity: 0.8; border-color: #2c5a3a; }
 .fps-armory .up.owned i { color: var(--green); }
 
-/* ---- touch controls ---- */
-.fps-touch { position: absolute; inset: 0; pointer-events: none; }
-.fps-touch button { pointer-events: auto; touch-action: none; }
+/* ---- touch controls ----
+   Right thumb: the fire button with its arc (grenade above, sights and reload
+   to its left, weapon swap further out), all within a thumb's sweep. Left
+   thumb: the move stick appears wherever it lands on the left of the screen.
+   Fireteam orders, the armory and pause sit in a row at the bottom middle. */
+.fps-touch { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.fps-touch button { pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent; }
 .fps-stick {
   position: absolute;
-  width: 110px;
-  height: 110px;
-  margin: -55px 0 0 -55px;
+  width: 120px;
+  height: 120px;
+  margin: -60px 0 0 -60px;
   border-radius: 50%;
   border: 2px solid #ffffff44;
   background: #ffffff10;
@@ -422,32 +426,138 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 46px;
-  height: 46px;
-  margin: -23px 0 0 -23px;
+  width: 50px;
+  height: 50px;
+  margin: -25px 0 0 -25px;
   border-radius: 50%;
   background: #ffffff55;
 }
+/* where to put the thumbs, until the stick is first used */
+.fps-stick-hint,
+.fps-look-hint {
+  position: absolute;
+  bottom: 70px;
+  width: 110px;
+  height: 110px;
+  line-height: 110px;
+  border-radius: 50%;
+  border: 2px dashed #ffffff40;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: #ffffff90;
+  text-shadow: 0 1px 2px #000;
+  transition: opacity 0.6s;
+}
+.fps-stick-hint { left: max(40px, calc(env(safe-area-inset-left) + 24px)); }
+.fps-look-hint { right: 45%; border-style: dotted; }
+.fps-touch.used .fps-stick-hint,
+.fps-touch.used .fps-look-hint { opacity: 0; }
 .fps-tb {
   position: absolute;
-  width: 58px;
-  height: 58px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   border: 1px solid var(--line-hi);
-  background: rgba(9, 13, 21, 0.6);
+  background: rgba(9, 13, 21, 0.55);
   color: var(--text);
-  font-size: 24px;
+  font-size: 23px;
+  backdrop-filter: blur(2px);
 }
+.fps-tb:active { background: rgba(60, 90, 140, 0.7); }
 .fps-tb.on { border-color: var(--gold); background: rgba(80, 60, 10, 0.6); }
-.fps-tb.fire { right: 24px; bottom: 120px; width: 84px; height: 84px; font-size: 34px; border-color: #ff7a6a88; }
-.fps-tb.ads { right: 120px; bottom: 150px; }
-.fps-tb.reload { right: 120px; bottom: 82px; }
-.fps-tb.nade { right: 40px; bottom: 222px; }
-.fps-tb.swap { right: 186px; bottom: 116px; }
-.fps-orders { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 8px; pointer-events: none; }
-.fps-tb.sm { position: static; width: 46px; height: 46px; font-size: 20px; }
-.fps-hud.touch .fps-weapon { bottom: 10px; right: 10px; }
-.fps-hud.touch .fps-ammo b { font-size: 24px; }
+.fps-tb.fire {
+  right: max(26px, calc(env(safe-area-inset-right) + 14px));
+  bottom: 58px;
+  width: 88px;
+  height: 88px;
+  font-size: 34px;
+  border: 2px solid #ff7a6aa0;
+  background: rgba(70, 14, 10, 0.5);
+}
+.fps-tb.nade { right: max(42px, calc(env(safe-area-inset-right) + 30px)); bottom: 158px; }
+.fps-tb.ads { right: max(116px, calc(env(safe-area-inset-right) + 104px)); bottom: 136px; }
+.fps-tb.reload { right: max(126px, calc(env(safe-area-inset-right) + 114px)); bottom: 62px; }
+.fps-tb.swap { right: max(192px, calc(env(safe-area-inset-right) + 180px)); bottom: 96px; font-size: 20px; }
+.fps-orders {
+  position: absolute;
+  left: 50%;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+.fps-tb.sm { position: static; width: 44px; height: 44px; font-size: 19px; }
+
+/* the HUD itself makes room for the thumbs on a touch screen */
+.fps-hud.touch .fps-weapon { bottom: max(4px, env(safe-area-inset-bottom)); right: max(10px, env(safe-area-inset-right)); }
+.fps-hud.touch .fps-ammo b { font-size: 20px; }
+.fps-hud.touch .fps-ammo span { font-size: 13px; }
+.fps-hud.touch .fps-wname,
+.fps-hud.touch .fps-slots { display: none; }
+.fps-hud.touch .fps-kit { font-size: 12px; }
+.fps-hud.touch .fps-feed {
+  top: 46px;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  align-items: center;
+  font-size: 13px;
+}
+.fps-hud.touch .fps-feed .ln:nth-child(n + 4) { display: none; }
+.fps-hud.touch .fps-prompt { top: auto; bottom: 64px; font-size: 13px; }
+.fps-hud.touch .fps-vitals { bottom: max(8px, env(safe-area-inset-bottom)); }
+.fps-hud.touch .fps-hp { width: 150px; height: 15px; }
+.fps-hud.touch .fps-hp span { line-height: 15px; font-size: 11px; }
+.fps-hud.touch .fps-rp { font-size: 12px; }
+.fps-hud.touch .fps-rp b { font-size: 16px; }
+
+/* portrait: the orders go down the left edge, the radar shrinks */
+@media (orientation: portrait) {
+  .fps-orders { left: max(8px, env(safe-area-inset-left)); bottom: auto; top: 34%; transform: none; flex-direction: column; }
+  .fps-hud.touch .fps-radar { width: 96px; height: 96px; }
+  .fps-hud.touch .fps-top { left: max(8px, env(safe-area-inset-left)); transform: none; gap: 6px; padding: 4px 8px; }
+  .fps-hud.touch .fps-team { top: 52px; }
+  .fps-hud.touch .fps-feed { top: 112px; }
+  .fps-hud.touch .fps-prompt { bottom: 260px; }
+  .fps-look-hint { right: 30%; bottom: 280px; }
+}
+
+/* ---- the crosshair over an enemy (aim assist holding) ---- */
+.fps-cross.on i { background: #ff5a4a; }
+
+/* ---- layering and scrolling: screens over the HUD, and they scroll by touch ---- */
+.fps-overlay,
+.fps-modal {
+  z-index: 10;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---- pause menu settings ---- */
+.fps-opts { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; text-align: left; }
+.fps-opt {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 10px;
+  padding: 7px 10px;
+  color: var(--text);
+  background: #142035;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font: inherit;
+  text-align: left;
+}
+.fps-opt b { font-size: 15px; }
+.fps-opt span { grid-column: 1; font-size: 12px; color: var(--dim); }
+.fps-opt i { grid-row: 1 / span 2; grid-column: 2; font-style: normal; font-weight: 800; color: var(--dim); }
+.fps-opt.on { border-color: #2c5a3a; }
+.fps-opt.on i { color: var(--green); }
+.fps-opt input[type="range"] { grid-column: 1; width: 100%; accent-color: var(--gold); touch-action: pan-x; }
+label.fps-opt i { color: var(--gold); }
 
 @media (max-width: 760px), (max-height: 500px) {
   .fps-radar { width: 110px; height: 110px; }
@@ -464,4 +574,8 @@
   .fps-card { padding: 12px 16px; }
   .fps-card p, .fps-card ul { font-size: 14px; margin: 4px 0; line-height: 1.3; }
   .fps-card .cta.big { min-height: 40px; padding: 6px 24px; }
+  .fps-card h2 { font-size: 22px; }
+  .fps-opts { margin: 6px 0; gap: 4px; }
+  .fps-opt { padding: 4px 10px; }
+  .fps-opt span { display: none; }
 }

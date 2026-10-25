@@ -4,6 +4,7 @@ import {
   upgradeBlocker, type FrontlineState, type TeamKind, type UpgradeId, type WeaponId
 } from "../sim/modes/frontline";
 import { Terrain, type Faction, type UnitKind, type World } from "../sim/types";
+import type { FpsSettings } from "./settings";
 import "./fps.css";
 
 /**
@@ -22,6 +23,8 @@ export interface HudHooks {
   buy(id: UpgradeId): void;
   request(kind: TeamKind): void;
   closeArmory(): void;
+  pause(): void;
+  setting(key: keyof FpsSettings, value: number | boolean): void;
 }
 
 export interface Marker {
@@ -115,6 +118,20 @@ export class FpsHud {
       else if (d === "buy") hooks.buy(b.dataset.id as UpgradeId);
       else if (d === "req") hooks.request(b.dataset.id as TeamKind);
       else if (d === "close") hooks.closeArmory();
+      else if (d === "toggle") {
+        const k = b.dataset.k as "assist" | "autoFire" | "haptics";
+        const on = !b.classList.contains("on");
+        b.classList.toggle("on", on);
+        b.querySelector("i")!.textContent = on ? "On" : "Off";
+        hooks.setting(k, on);
+      }
+    });
+    el.addEventListener("input", (e) => {
+      const r = e.target as HTMLInputElement;
+      if (r.dataset.k === "sens") {
+        hooks.setting("sens", Number(r.value));
+        r.nextElementSibling!.textContent = `${Number(r.value).toFixed(1)}×`;
+      }
     });
   }
 
@@ -134,6 +151,8 @@ export class FpsHud {
     ads: number;
     scoped: boolean;
     spread: number;
+    /** The aim assist holds an enemy: the crosshair turns red. */
+    onEnemy: boolean;
     secs: number;
     supply: boolean;
     prompt: string;
@@ -167,6 +186,7 @@ export class FpsHud {
     const cross = this.q(".fps-cross");
     cross.style.setProperty("--gap", `${gap}px`);
     cross.hidden = o.scoped || o.hp === null;
+    cross.classList.toggle("on", o.onEnemy);
     this.q(".fps-scope").hidden = !o.scoped;
     // match
     this.set(".fps-clock", clock(o.secs));
@@ -358,15 +378,23 @@ export class FpsHud {
     box.hidden = false;
   }
 
-  pause(on: boolean): void {
+  pause(on: boolean, set?: FpsSettings): void {
     const box = this.q(".fps-pause");
     box.hidden = !on;
-    if (on)
-      box.innerHTML = `<div class="fps-card small">
-        <h2>PAUSED</h2>
-        <button class="cta big" data-do="resume">▶ Resume</button>
-        <button class="cta alt" data-do="menu">Quit to menu</button>
-      </div>`;
+    if (!on || !set) return;
+    const toggle = (k: "assist" | "autoFire" | "haptics", label: string, note: string) =>
+      `<button class="fps-opt${set[k] ? " on" : ""}" data-do="toggle" data-k="${k}"><b>${label}</b><span>${note}</span><i>${set[k] ? "On" : "Off"}</i></button>`;
+    box.innerHTML = `<div class="fps-card small">
+      <h2>PAUSED</h2>
+      <div class="fps-opts">
+        <label class="fps-opt"><b>Look sensitivity</b><input type="range" min="0.4" max="2.5" step="0.1" value="${set.sens}" data-k="sens" /><i>${set.sens.toFixed(1)}×</i></label>
+        ${toggle("assist", "Aim assist", "The crosshair slows and settles on enemies")}
+        ${toggle("autoFire", "Auto-fire", "Shoots while the crosshair is on an enemy (not rockets)")}
+        ${this.touch ? toggle("haptics", "Vibration", "Buzz on hits taken and kills") : ""}
+      </div>
+      <button class="cta big" data-do="resume">▶ Resume</button>
+      <button class="cta alt" data-do="menu">Quit to menu</button>
+    </div>`;
   }
 
   end(o: { won: boolean | null; s: FrontlineState; secs: number }): void {

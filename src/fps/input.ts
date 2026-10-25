@@ -53,6 +53,8 @@ export class FpsInput {
   locked = false;
   private lockedAt = 0;
   enabled = true;
+  /** Look sensitivity multiplier (the pause menu's slider). */
+  sens = 1;
 
   constructor(private canvas: HTMLElement, private root: HTMLElement) {
     this.touch = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
@@ -76,8 +78,8 @@ export class FpsInput {
       if (!this.locked || !this.enabled) return;
       // (Chrome reports the jump to the centre as one huge movement as the lock engages: drop it)
       if (performance.now() - this.lockedAt < 120 || Math.abs(e.movementX) > 250 || Math.abs(e.movementY) > 250) return;
-      this.lookX += e.movementX * MOUSE_SENS;
-      this.lookY += e.movementY * MOUSE_SENS;
+      this.lookX += e.movementX * MOUSE_SENS * this.sens;
+      this.lookY += e.movementY * MOUSE_SENS * this.sens;
     });
     on("mousedown", (e) => {
       if (!this.locked) return;
@@ -168,6 +170,8 @@ export class FpsInput {
     const pad = document.createElement("div");
     pad.className = "fps-touch";
     pad.innerHTML = `
+      <div class="fps-stick-hint" aria-hidden="true">move</div>
+      <div class="fps-look-hint" aria-hidden="true">look</div>
       <div class="fps-stick" hidden><div class="fps-knob"></div></div>
       <button class="fps-tb fire" data-hold="fire">🔥</button>
       <button class="fps-tb ads" data-toggle="ads">◎</button>
@@ -216,6 +220,7 @@ export class FpsInput {
       if (e.clientX < window.innerWidth * 0.45) {
         if (this.stick) return;
         this.stick = { id: e.pointerId, cx: e.clientX, cy: e.clientY, dx: 0, dy: 0 };
+        pad.classList.add("used");
         if (this.stickEl) {
           this.stickEl.hidden = false;
           this.stickEl.style.left = `${e.clientX}px`;
@@ -254,8 +259,8 @@ export class FpsInput {
 
   private lookMove(e: PointerEvent): void {
     if (this.look?.id !== e.pointerId) return;
-    this.lookX += (e.clientX - this.look.x) * MOUSE_SENS * TOUCH_K;
-    this.lookY += (e.clientY - this.look.y) * MOUSE_SENS * TOUCH_K;
+    this.lookX += (e.clientX - this.look.x) * MOUSE_SENS * TOUCH_K * this.sens;
+    this.lookY += (e.clientY - this.look.y) * MOUSE_SENS * TOUCH_K * this.sens;
     this.look.x = e.clientX;
     this.look.y = e.clientY;
   }
