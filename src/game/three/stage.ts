@@ -300,12 +300,20 @@ export class Stage {
     return this.ratio;
   }
 
+  /**
+   * Where the shadow box goes instead of over the RTS view (a first-person
+   * camera looking at the horizon: Frontline, src/fps): its centre and
+   * half-width in tiles. Null: follow the RTS view.
+   */
+  shadowFocus: { x: number; y: number; half: number } | null = null;
+
   /** Keep the sun's shadow box over what the camera sees. */
   private fitShadow(): void {
-    const v = this.rig.viewRect();
+    const f = this.shadowFocus;
+    const v = f ? { x0: f.x - f.half, x1: f.x + f.half, y0: f.y - f.half, y1: f.y + f.half } : this.rig.viewRect();
     const cx = (v.x0 + v.x1) / 2;
     const cz = (v.y0 + v.y1) / 2;
-    const half = Math.min(60, Math.max(v.x1 - v.x0, v.y1 - v.y0) / 2 + 3);
+    const half = f ? f.half : Math.min(60, Math.max(v.x1 - v.x0, v.y1 - v.y0) / 2 + 3);
     // resize in steps (a new projection every frame would shimmer)
     if (Math.abs(half - this.shadowHalf) > this.shadowHalf * 0.12 || this.shadowHalf === 0) {
       this.shadowHalf = Math.ceil(half);

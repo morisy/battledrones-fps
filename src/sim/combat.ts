@@ -8,6 +8,7 @@ import { leaveWreck, scatterGantry } from "./salvage";
 import { bailOut, canBailOut } from "./transport";
 import { Terrain, type ArmorClass, type Building, type Domain, type Faction, type TargetDomain, type Unit, type World } from "./types";
 import { rulesOf } from "./rules";
+import { avatarArmor } from "./modes/frontline";
 import { buildingCenter, canGetWithin, distToBuilding, domainOf, hqOf, moveClassOf, removeBuilding, terrainAt } from "./world";
 import { atan2, hypot } from "./fmath";
 import { isMulti, otherSide, sidesOf } from "./sides";
@@ -143,6 +144,8 @@ function damageMult(w: World, id: number, dmgType: keyof typeof DAMAGE_VS): numb
       const t = terrainAt(w, Math.floor(u.x), Math.floor(u.y));
       cover = t === Terrain.Forest && isInfantry(u.kind) ? INFANTRY.woodsCover : TERRAIN[t].cover;
     }
+    // the player's soldier: its plating (and spawn shield) on top (modes/frontline.ts)
+    if (u.avatar) cover *= avatarArmor(w);
   }
   return DAMAGE_VS[dmgType][armor] * cover;
 }
@@ -228,6 +231,34 @@ export function areaBlast(
   splash(w, faction, x, y, radius, damage, dmgType, targets, attackerId, incidents);
   retaliate(w, incidents);
   return incidents.length;
+}
+
+/**
+ * One hit from outside the weapon loop (the Frontline player's own guns,
+ * modes/frontline.ts): `damage` before armour and cover, `vsAir` on top
+ * against aircraft, and at least `floor` × of it whatever the armour (armour-
+ * piercing rounds). The usual hit event, retaliation and kill credit to
+ * `attackerId`. Returns the damage dealt (capped at the HP the target had).
+ */
+export function directHit(
+  w: World,
+  attackerId: number,
+  targetId: number,
+  damage: number,
+  dmgType: keyof typeof DAMAGE_VS,
+  vsAir = 1,
+  floor = 0
+): number {
+  const t = targetPosition(w, targetId);
+  if (!t) return 0;
+  const before = (w.units.get(targetId) ?? w.buildings.get(targetId))!.hp;
+  if (before <= 0) return 0;
+  const mult = Math.max(floor, damageMult(w, targetId, dmgType));
+  const incidents: Incident[] = [];
+  applyDamage(w, targetId, damage * mult * (t.domain === "air" ? vsAir : 1), attackerId, incidents);
+  retaliate(w, incidents);
+  const after = (w.units.get(targetId) ?? w.buildings.get(targetId))!.hp;
+  return Math.min(before, before - after);
 }
 
 /** Raw damage to listed entities (the Sky Hammer), with the usual hit events and kill credit. */
@@ -386,6 +417,7 @@ export function tickCombat(w: World): Set<number> {
       engaged.add(u.id); // EMP'd (powers.ts): no firing, healing or moving
       continue;
     }
+    if (u.avatar) continue; // the player's soldier fires by hand (modes/frontline.ts)
     const stats = UNITS[u.kind];
     // (veterans patch themselves up; a Goliath only takes a Mender's repair)
     if (u.rank >= 3 && !u.goliath && u.hp < stats.hp && w.tick % TICK_RATE === 0)
@@ -562,7 +594,7 @@ function retaliate(w: World, incidents: Incident[]): void {
     const vy = victim ? victim.y : vb ? buildingCenter(vb).y : 0;
     const faction = victim?.faction ?? vb?.faction;
     for (const u of w.units.values()) {
-      if (u.faction !== faction || u.order.type !== "idle") continue;
+      if (u.faction !== faction || u.order.type !== "idle" || u.avatar) continue;
       if (u.goliath && !canWalk(u)) continue; // dug in (or on a lift): its guns answer on their own
       const stats = UNITS[u.kind];
       if (stats.targets === "none" || !canHit(stats.targets, attacker.domain)) continue;
