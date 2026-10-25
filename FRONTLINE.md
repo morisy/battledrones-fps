@@ -56,12 +56,18 @@ Not in this mode: replays, duels, Last Stand waves, the island map
 |---|---|---|
 | Move / look | WASD, mouse (pointer lock) | left-thumb stick, drag on the right |
 | Sprint | Shift | push the stick to the rim |
+| Jump | Space | ⤒ |
 | Fire / sights | left / right click | 🔥 (drag it to aim) / ◎ |
 | Reload, grenade | R, G | ⟳, 💣 |
 | Weapons | 1 2 3, wheel, Q (last) | ⇄ |
 | Fireteam | F follow · H hold where I aim · T attack what I aim at | ⚑ ✋ 🎯 |
 | Armory | B | 🛒 |
 | Pause (and settings) | Esc | ⏸ |
+
+**Jumping** is a hop of about 0.4 tiles (most of a robot's height), 0.6 s
+in the air, from the ground only. It is the view's alone: the sim's soldier
+stays on the ground, so it doesn't dodge fire, but a hop lets you see and
+shoot over a rise, and a shot from mid-air goes wide (+0.045 rad of cone).
 
 On a phone, **aim assist** (the crosshair slows over an enemy and drifts onto
 it) and **auto-fire** (the trigger pulls itself while the crosshair is on an

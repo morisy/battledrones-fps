@@ -57,6 +57,11 @@ const FOV = 72;
 /** Max pitch either way (radians). */
 const PITCH_MAX = 1.35;
 const GRAVITY = 7;
+/** A jump: take-off speed and the pull back down (tiles/s, tiles/s²): a hop of about 0.4 tiles, most of a robot's height, 0.6 s in the air. */
+const JUMP_SPEED = 2.8;
+const JUMP_GRAVITY = 9.5;
+/** Extra aim cone while airborne (radians): a shot from mid-jump goes wide. */
+const AIR_SPREAD = 0.045;
 
 /** Horizon haze and zenith per biome (sky dome, fog and the void past the map). */
 const SKY: Record<World["biome"], { horizon: number; zenith: number; near: number; far: number }> = {
@@ -127,6 +132,10 @@ export class FpsScene {
   private bob = 0;
   private stride = 0;
   private eyeH = 0;
+  /** The jump: height above the ground, vertical speed, and the dip the view takes on landing. */
+  private jumpH = 0;
+  private jumpV = 0;
+  private landDip = 0;
   private shake = 0;
   private weapon: WeaponId = "carbine";
   private lastWeapon: WeaponId = "carbine";
@@ -375,6 +384,7 @@ export class FpsScene {
     const a = avatarOf(this.world)!;
     this.lastHp = a.hp;
     this.deathAt = null;
+    this.jumpH = this.jumpV = this.landDip = 0;
     this.hud.respawn(null);
     this.armory(false);
     this.reloading = 0;
@@ -406,7 +416,7 @@ export class FpsScene {
       if (inp.actions.has("armory")) this.armory(!this.hud.armoryShown);
       const a = avatarOf(w);
       if (a) this.play(dt, inp);
-      else if (inp.actions.has("deploy")) this.deploy(squadSpawn(w) ? "squad" : "hq");
+      else if (inp.actions.has("deploy") || inp.actions.has("jump")) this.deploy(squadSpawn(w) ? "squad" : "hq");
       // the sim, at 10 Hz
       this.acc += dt * 1000;
       let n = 0;
@@ -467,7 +477,28 @@ export class FpsScene {
     const moving = Math.hypot(inp.move.x, inp.move.y) > 0.05 && moveAvatar(w, mx * slow, my * slow, dt, sprint);
     const pace = moving ? Math.hypot(inp.move.x, inp.move.y) * terrainPace(w, a.x, a.y) * (sprint ? FRONTLINE.sprint : 1) * slow : 0;
     this.stride += (pace - this.stride) * Math.min(1, dt * 8);
-    this.bob += dt * 9.5 * this.stride;
+    // (no stride bob in the air)
+    if (this.jumpH <= 0) this.bob += dt * 9.5 * this.stride;
+
+    // jump: a hop straight up, from the ground only (a sprinting take-off goes a little higher)
+    if (inp.actions.has("jump") && this.jumpH <= 0 && this.jumpV <= 0) {
+      this.jumpV = JUMP_SPEED * (sprint ? 1.08 : 1);
+      this.jumpH = 1e-4;
+      sfx.play("thrust", 0.25);
+    }
+    if (this.jumpH > 0) {
+      this.jumpV -= JUMP_GRAVITY * dt;
+      this.jumpH += this.jumpV * dt;
+      if (this.jumpH <= 0) {
+        // landed: the view dips, dust kicks up
+        const hard = Math.min(1, -this.jumpV / JUMP_SPEED);
+        this.jumpH = 0;
+        this.jumpV = 0;
+        this.landDip = 0.035 * hard;
+        sfx.play("stomp", 0.18 * hard);
+        this.fx.dust(a.x, a.y, 2);
+      }
+    }
 
     // weapons
     const pick = (id: WeaponId) => ownsWeapon(s, id) && this.equip(id);
@@ -633,7 +664,7 @@ export class FpsScene {
   private spread(moving: boolean): number {
     const st = WEAPONS[this.weapon];
     const base = moving ? st.spread : st.settledSpread + (st.spread - st.settledSpread) * 0.25;
-    return (base + this.bloom) * (1 - this.ads * 0.7);
+    return (base + this.bloom + (this.jumpH > 0 ? AIR_SPREAD : 0)) * (1 - this.ads * 0.7);
   }
 
   private fire(st: ReturnType<typeof weaponStats>, moving: boolean): void {
@@ -943,7 +974,8 @@ export class FpsScene {
       const g = this.terrain.groundAt(a.x, a.y);
       this.eyeH = dt > 0 && Math.abs(this.eyeH - g) < 0.6 ? this.eyeH + (g - this.eyeH) * Math.min(1, dt * 14) : g;
       const bobY = Math.abs(Math.sin(this.bob)) * 0.012 * this.stride;
-      c.position.set(a.x, this.eyeH + EYE + bobY, a.y);
+      this.landDip = Math.max(0, this.landDip - dt * 0.18);
+      c.position.set(a.x, this.eyeH + EYE + bobY + this.jumpH - this.landDip, a.y);
       const sh = this.shake * 0.012;
       c.rotation.set(this.pitch + this.recoil + (Math.random() - 0.5) * sh, -this.yaw + (Math.random() - 0.5) * sh, Math.sin(this.bob * 0.5) * 0.004 * this.stride);
     } else {

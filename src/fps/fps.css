@@ -479,6 +479,7 @@
 .fps-tb.ads { right: max(116px, calc(env(safe-area-inset-right) + 104px)); bottom: 136px; }
 .fps-tb.reload { right: max(126px, calc(env(safe-area-inset-right) + 114px)); bottom: 62px; }
 .fps-tb.swap { right: max(192px, calc(env(safe-area-inset-right) + 180px)); bottom: 96px; font-size: 20px; }
+.fps-tb.jump { right: max(184px, calc(env(safe-area-inset-right) + 172px)); bottom: 168px; font-size: 24px; }
 .fps-orders {
   position: absolute;
   left: 50%;

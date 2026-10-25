@@ -325,9 +325,9 @@ export class FpsHud {
     const box = this.q(".fps-intro");
     const keys = this.touch
       ? `<li><b>Left thumb</b> move (push to the rim to sprint) · <b>right thumb</b> look</li>
-         <li><b>🔥</b> fire (drag it to aim) · <b>◎</b> sights · <b>⟳</b> reload · <b>💣</b> grenade · <b>⇄</b> weapon</li>
+         <li><b>🔥</b> fire (drag it to aim) · <b>◎</b> sights · <b>⟳</b> reload · <b>💣</b> grenade · <b>⇄</b> weapon · <b>⤒</b> jump</li>
          <li><b>⚑ ✋ 🎯</b> fireteam: follow · hold where you aim · attack what you aim at · <b>🛒</b> armory</li>`
-      : `<li><b>WASD</b> move · <b>Shift</b> sprint · <b>mouse</b> look · <b>left click</b> fire · <b>right click</b> sights</li>
+      : `<li><b>WASD</b> move · <b>Shift</b> sprint · <b>Space</b> jump · <b>mouse</b> look · <b>left click</b> fire · <b>right click</b> sights</li>
          <li><b>R</b> reload · <b>G</b> grenade · <b>1 2 3</b>, wheel or <b>Q</b> weapons</li>
          <li>Fireteam: <b>F</b> follow me · <b>H</b> hold where I aim · <b>T</b> attack what I aim at</li>
          <li><b>B</b> armory and reinforcements · <b>Esc</b> pause</li>`;
@@ -369,7 +369,7 @@ export class FpsHud {
         <button class="cta" data-do="hq" ${ready ? "" : "disabled"}>⌂ Deploy at HQ</button>
         <button class="cta" data-do="squad" ${ready && o.squad ? "" : "disabled"}>⚑ Deploy on ${o.squad ? esc(o.squad) : "fireteam"}</button>
       </div>
-      <p class="fsub">${this.touch ? "Tap 🛒 to shop while you wait" : "B: shop while you wait · Space: deploy"} · ${Math.floor(o.rp)} RP</p>
+      <p class="fsub">${this.touch ? "Tap 🛒 to shop while you wait" : "B: shop while you wait · Space or Enter: deploy"} · ${Math.floor(o.rp)} RP</p>
     </div>`;
     if (this.last.get("respawn") !== html) {
       this.last.set("respawn", html);

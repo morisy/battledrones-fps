@@ -10,11 +10,11 @@
 
 export type Action =
   | "reload" | "grenade" | "weapon1" | "weapon2" | "weapon3" | "nextWeapon" | "prevWeapon" | "lastWeapon"
-  | "follow" | "hold" | "attack" | "armory" | "pause" | "deploy";
+  | "follow" | "hold" | "attack" | "armory" | "pause" | "deploy" | "jump";
 
 const KEYS: Record<string, Action> = {
   KeyR: "reload", KeyG: "grenade", Digit1: "weapon1", Digit2: "weapon2", Digit3: "weapon3", KeyQ: "lastWeapon",
-  KeyF: "follow", KeyH: "hold", KeyT: "attack", KeyB: "armory", Escape: "pause", Space: "deploy", Enter: "deploy"
+  KeyF: "follow", KeyH: "hold", KeyT: "attack", KeyB: "armory", Escape: "pause", Space: "jump", Enter: "deploy"
 };
 
 export interface InputFrame {
@@ -178,6 +178,7 @@ export class FpsInput {
       <button class="fps-tb reload" data-act="reload">⟳</button>
       <button class="fps-tb nade" data-act="grenade">💣</button>
       <button class="fps-tb swap" data-act="nextWeapon">⇄</button>
+      <button class="fps-tb jump" data-act="jump" title="Jump">⤒</button>
       <div class="fps-orders">
         <button class="fps-tb sm" data-act="follow" title="Fireteam: follow me">⚑</button>
         <button class="fps-tb sm" data-act="hold" title="Fireteam: hold where I aim">✋</button>
