@@ -2259,6 +2259,17 @@ completion goal.
   "New op unlocked", the op's tip after a failure, and Next op / Retry / Main
   menu. Rematch tokens are `op:<id>`.
 
+### Frontline (first-person mode)
+
+A fourth mode on the menu: the same battle, two AI commanders fighting it as
+in AI vs AI, played from inside one of Blue's robots with a gun and a
+fireteam. Red gets an income edge so that Blue loses without the player. The
+soldier is a Trooper Squad on the sim's books (`Unit.avatar`) that the sim
+never moves or fires for; the player walks it and shoots through the sim's
+damage rules (`src/sim/modes/frontline.ts`), in a first-person scene that
+reuses every battlefield renderer (`src/fps/`). Weapons, Requisition,
+upgrades, the fireteam, difficulty and the measured balance: **FRONTLINE.md**.
+
 ## Controls & UI (mobile-first, full-screen)
 
 ### Full-screen behavior

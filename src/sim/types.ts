@@ -225,6 +225,13 @@ export interface Unit {
   free?: boolean;
   /** Goliath only: its modes, weapon systems, training queue and lift (goliath.ts). Absent on every other unit. */
   goliath?: GoliathState;
+  /**
+   * Frontline (FRONTLINE.md, modes/frontline.ts): the player's own soldier, a
+   * Trooper on the sim's books that the player walks and shoots by hand. The
+   * sim never moves it, fires for it or nudges it aside; enemies shoot it like
+   * any squad. Absent on every other unit.
+   */
+  avatar?: boolean;
 }
 
 export interface QueueItem {
@@ -757,6 +764,7 @@ import type { FactionFog } from "./fog";
 import type { SurvivalState, WaveTheme } from "./modes/survival";
 import type { Rules } from "./rules";
 import type { OpsState } from "./ops";
+import type { FrontlineState } from "./modes/frontline";
 
 export type Biome = "temperate" | "desert" | "arctic" | "volcanic" | "tropical";
 
@@ -804,6 +812,8 @@ export interface World {
   rules?: Rules | null;
   /** Ops campaign scenario state (ops.ts); absent in skirmish and Last Stand. */
   ops?: OpsState | null;
+  /** Frontline: the player's soldier, loadout and fireteam (modes/frontline.ts); absent in every other mode. */
+  frontline?: FrontlineState | null;
   /** Free replacement Condors (lifeline.ts); absent unless the map hands them out. */
   lifeline?: Record<Faction, LifelineSlot> | null;
   /** Robot Love: the two Goliaths that fell in love and ended the match in a draw, where and when (goliath.ts tickLove). */

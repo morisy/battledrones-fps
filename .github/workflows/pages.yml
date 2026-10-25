@@ -47,6 +47,9 @@ jobs:
       - run: npm ci
       - name: Build current game and every version tag
         run: npm run build:pages
+        env:
+          # (optional repository variable: "/" when a custom domain serves this repo at its root)
+          PAGES_BASE: ${{ vars.PAGES_BASE }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: _site

@@ -7,8 +7,12 @@ import type { Faction } from "../sim/types";
 import { setLocalSide } from "./controller";
 import type { DailyOp } from "./daily";
 
-/** Skirmish (vs an AI commander), Last Stand (survive endless waves) or the Ops campaign. */
-export type GameType = "skirmish" | "survival" | "ops";
+/**
+ * Skirmish (vs an AI commander), Last Stand (survive endless waves), the Ops
+ * campaign, or Frontline (fight the battle in first person as one of Blue's
+ * robots: FRONTLINE.md, src/fps).
+ */
+export type GameType = "skirmish" | "survival" | "ops" | "frontline";
 
 /** Match settings, chosen on the menu before the game boots. */
 export const gameMode = {
@@ -113,7 +117,7 @@ export function loadSettings(): void {
     gameMode.mapId = typeof s.mapId === "string" && isKnownMapId(s.mapId) ? s.mapId : "riverlands";
     if (s.difficulty === "easy" || s.difficulty === "normal" || s.difficulty === "hard")
       gameMode.difficulty = s.difficulty;
-    if (s.mode === "skirmish" || s.mode === "survival" || s.mode === "ops") gameMode.mode = s.mode;
+    if (s.mode === "skirmish" || s.mode === "survival" || s.mode === "ops" || s.mode === "frontline") gameMode.mode = s.mode;
     if (typeof s.opId === "string" && opById(s.opId)) gameMode.opId = s.opId;
     if (Array.isArray(s.mutators)) gameMode.mutators = s.mutators.filter(isMutatorId);
     gameMode.uncharted = s.uncharted === true;

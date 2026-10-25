@@ -300,7 +300,7 @@ export function tickMovement(w: World, pausedIds: Set<number>, spots: Map<number
   for (const u of w.units.values()) if (crushes(u.kind)) crushers.push({ u, x: u.x, y: u.y });
   for (const u of w.units.values()) {
     const o = u.order;
-    if (pausedIds.has(u.id)) continue;
+    if (pausedIds.has(u.id) || u.avatar) continue; // (the Frontline player walks their soldier by hand)
     if (!canWalk(u)) continue; // a Goliath digging in, anchored, packing up or on a lift (its order waits)
     if (o.type === "move" || o.type === "attackMove") {
       if (moveUnitToward(w, u, o.x, o.y)) u.order = { type: "idle" };
@@ -394,7 +394,8 @@ function separate(w: World, driving: Set<number>): void {
         ux = dx / d;
         uy = dy / d;
       }
-      const planted = (u: Unit) => !!u.goliath && !canWalk(u);
+      // (the Frontline player's soldier stands where the player puts it: it never gets shoved, like a dug-in Goliath)
+      const planted = (u: Unit) => (!!u.goliath && !canWalk(u)) || !!u.avatar;
       if (planted(a) && planted(b)) continue; // (two dug in never budge: their footprints can't overlap anyway)
       if (planted(a) !== planted(b)) {
         // a dug-in Goliath doesn't budge: the other takes the whole push

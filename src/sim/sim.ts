@@ -13,6 +13,7 @@ import { applyGoliathCommand, orderedToMove, tickGoliaths, tickLove } from "./go
 import { applyLiftCommand, routeLiftCommand, tickLift, type HeldLiftOrders } from "./lift";
 import { tickLifeline } from "./lifeline";
 import { callWaveEarly, tickSurvival } from "./modes/survival";
+import { tickFrontline } from "./modes/frontline";
 import { tickMovement, vehicleSpots } from "./movement";
 import { tickOps } from "./ops";
 import { tickObjectives } from "./objectives";
@@ -45,6 +46,7 @@ export function step(w: World, commands: Command[]): void {
   if (w.lifeline) tickLifeline(w); // a side left with no Condor gets a free one (lifeline.ts)
   tickSalvage(w);
   tickObjectives(w); // Uplink capture bars and income, supply drops (objectives.ts)
+  if (w.frontline) tickFrontline(w); // the Frontline player's soldier and fireteam (modes/frontline.ts)
   chargePowers(w); // Command meters fill from this tick's losses
   if (w.survival) tickSurvival(w);
   if (w.ops) tickOps(w);

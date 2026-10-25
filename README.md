@@ -166,6 +166,16 @@ every order, note and radio line, in the [battle record viewer](https://simonw.g
   turning point marked (and the first Goliath, or an HQ that fell while a
   Goliath fought on), your MVP unit, correct kill stats and one tip for
   next time.
+- **🎯 Frontline**, the battle in first person: you are one robot in Blue's
+  army while two AI commanders fight the whole RTS match around you. Walk
+  the battlefield with a pulse carbine, and earn Requisition from kills,
+  damage, Uplink captures and supply crates to unlock a rail rifle and a
+  rocket launcher, upgrade them, or radio in more squads. A fireteam (a
+  Trooper and a Rocket Squad to start) follows you, holds where you aim or
+  focuses fire on what you aim at. Red out-earns Blue, so the war is lost
+  without you. Mouse and keyboard with pointer lock, or twin-thumb touch
+  controls. See [FRONTLINE.md](FRONTLINE.md) for the design and the
+  measured balance.
 - **Last Stand** survival mode: hold your base against endless, announced
   waves — Air Raids, Armour Columns, Artillery, Mixed Assaults and robot
   Bot Swarms, four of them in each block of five and then a Boss — from

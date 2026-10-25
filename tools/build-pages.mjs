@@ -9,7 +9,10 @@ import { createVersionArchive, restoreVersionArchive } from "./pages-archive.mjs
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const output = join(root, "_site");
-const base = "/battledrones/";
+// The site's path: PAGES_BASE if set ("/" for a site served at a domain's root), else the repository's
+// name as GitHub Pages serves a project site (/battledrones-fps/ for owner/battledrones-fps).
+const repoName = process.env.GITHUB_REPOSITORY?.split("/")[1];
+const base = process.env.PAGES_BASE || (repoName ? `/${repoName}/` : "/battledrones/");
 // An empty override forces historical versions to rebuild from source.
 const cacheURL = process.env.PAGES_CACHE_URL ?? "https://simonw.github.io/battledrones/";
 const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();

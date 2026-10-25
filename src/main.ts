@@ -176,6 +176,14 @@ async function startGame(feed?: MatchFeed): Promise<void> {
   // other phone plays (SOUND-DUEL.md "Playing red"). Not Last Stand, an op or the Daily Op, which
   // are set up for blue, nor a watched match; a fed match (a replay, a duel) brings its own side.
   // (before the scene: its presenters copy the side as they are built)
+  // Frontline: the first-person mode has its own scene (src/fps), loaded only when played
+  if (!feed && gameMode.mode === "frontline" && !gameMode.spectator) {
+    const { FpsScene } = await import("./fps/scene");
+    const fps = new FpsScene(document.getElementById("game")!, dpr(), art);
+    window.addEventListener("resize", () => fps.resize());
+    window.addEventListener("orientationchange", () => setTimeout(() => fps.resize(), 200));
+    return;
+  }
   const asRed = new URLSearchParams(location.search).get("side") === "red";
   if (asRed && !feed && gameMode.mode === "skirmish" && !gameMode.spectator && !gameMode.daily && !gameMode.op) setLocalSide("red");
   const scene = new GameScene(document.getElementById("game")!, dpr(), art, feed);
@@ -306,6 +314,7 @@ function showMenu(linkedMap?: string | null): void {
         <button data-m="skirmish">⚔ Skirmish</button>
         <button data-m="survival">🛡 Last Stand</button>
         <button data-m="ops">🎖 Ops</button>
+        <button data-m="frontline">🎯 Frontline</button>
       </div>
       <p class="lsbest" id="lsbest" hidden></p>
       <p class="lsbest opsum" id="opsum" hidden></p>
@@ -440,8 +449,15 @@ function showMenu(linkedMap?: string | null): void {
       sync(); // the Play button names the picked op
     }
   });
-  /** Is this map offered in the mode picked (Last Stand isn't played on the island map)? */
-  const offered = (id: string) => gameMode.mode !== "survival" || mapById(id).lastStand !== false;
+  /**
+   * Is this map offered in the mode picked? Last Stand isn't played on the island map; Frontline
+   * needs a two-sided map a soldier can walk across (not the islands, not the four-player map).
+   */
+  const offered = (id: string) => {
+    const m = mapById(id);
+    if (gameMode.mode === "frontline") return m.players !== 4 && !m.islands;
+    return gameMode.mode !== "survival" || m.lastStand !== false;
+  };
   /** The map the menu shows and Play starts: the pick, or the first one offered in this mode. */
   const shownMap = () => (offered(gameMode.mapId) ? gameMode.mapId : MAPS.find((x) => offered(x.id))!.id);
   let menuBiome: string | null = null;
@@ -499,12 +515,13 @@ function showMenu(linkedMap?: string | null): void {
   const sync = () => {
     const survival = gameMode.mode === "survival";
     const opsMode = gameMode.mode === "ops";
+    const frontline = gameMode.mode === "frontline";
     career.sync();
     for (const id of ["#opsum", "#opcards", "#opblurb"]) menu.querySelector<HTMLElement>(id)!.hidden = !opsMode;
     for (const id of ["#maps", "#blurb", "#diff"]) menu.querySelector<HTMLElement>(id)!.hidden = opsMode;
     syncRandom();
     ops.sync();
-    menu.querySelector<HTMLElement>("#play-spectate")!.hidden = opsMode;
+    menu.querySelector<HTMLElement>("#play-spectate")!.hidden = opsMode || frontline;
     duelRow.hidden = gameMode.mode !== "skirmish";
     menu.classList.toggle("ops-mode", opsMode);
     // Last Stand isn't offered on every map (the island map): show the first that is, without
@@ -520,7 +537,7 @@ function showMenu(linkedMap?: string | null): void {
       badge.textContent = rec ? `🛡 ${rec.best}` : "";
       // (generated maps earn no stars: there are endlessly many)
       const stars = el.querySelector<HTMLElement>(".mstars")!;
-      const noStars = survival || isRandomMapId(el.dataset.id!);
+      const noStars = survival || frontline || isRandomMapId(el.dataset.id!);
       const mask = noStars ? 0 : career.starsFor(el.dataset.id!);
       stars.hidden = noStars;
       stars.textContent = starsText(mask);
@@ -549,6 +566,8 @@ function showMenu(linkedMap?: string | null): void {
     const four = m.players === 4;
     menu.querySelector("#sub")!.textContent = opsMode
       ? "Short missions with a twist. Three stars each — can you take them all?"
+      : frontline
+        ? "Fight the battle in first person: one robot, a fireteam at your back, and a war that needs you to win."
       : survival
         ? "Hold your base against endless, themed waves. How long can you last?"
         : four
@@ -569,7 +588,7 @@ function showMenu(linkedMap?: string | null): void {
     const sel = ops.selected();
     menu.querySelector("#play")!.textContent = opsMode
       ? ops.locked(sel) ? "🔒 Locked" : `▶ Op: ${sel.title}`
-      : survival ? "▶ Start Last Stand" : "▶ Play";
+      : survival ? "▶ Start Last Stand" : frontline ? "▶ Deploy (Frontline)" : "▶ Play";
     menu.querySelector("#play")!.classList.toggle("locked", opsMode && ops.locked(sel));
     menu.querySelector("#play-spectate")!.textContent = survival ? "🤖 Watch AI defend" : "🤖 Watch AI vs AI";
   };

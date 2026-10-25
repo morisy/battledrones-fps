@@ -266,6 +266,8 @@ export class EntityRenderer {
   private inWoods: number[] = [];
   private groundFn = (x: number, z: number) => this.v.terrain.groundAt(x, z);
   readonly group = new THREE.Group();
+  /** Units never drawn whoever's they are (Frontline: the player's own soldier, seen from inside its head). */
+  readonly hidden = new Set<number>();
 
   constructor(
     private v: View,
@@ -756,7 +758,7 @@ export class EntityRenderer {
 
   private updateUnit(u: Unit, v: UnitView, gx: number, gy: number, dtMs: number, turnK: number): void {
     const stats = UNITS[u.kind];
-    const visible = this.isFriendly(u.faction) || (this.unitShown ? this.unitShown(u) : this.visibleAt(u.x, u.y));
+    const visible = !this.hidden.has(u.id) && (this.isFriendly(u.faction) || (this.unitShown ? this.unitShown(u) : this.visibleAt(u.x, u.y)));
     v.visible = visible;
     v.m.root.visible = visible;
     v.sx = u.x;
