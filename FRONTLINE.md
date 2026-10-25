@@ -61,7 +61,14 @@ Not in this mode: replays, duels, Last Stand waves, the island map
 | Weapons | 1 2 3, wheel, Q (last) | ⇄ |
 | Fireteam | F follow · H hold where I aim · T attack what I aim at | ⚑ ✋ 🎯 |
 | Armory | B | 🛒 |
-| Pause | Esc | |
+| Pause (and settings) | Esc | ⏸ |
+
+On a phone, **aim assist** (the crosshair slows over an enemy and drifts onto
+it) and **auto-fire** (the trigger pulls itself while the crosshair is on an
+enemy in range; never with rockets) are on by default, with look sensitivity
+and vibration, all in the pause menu. Phones play sideways: the game asks
+for landscape where the browser allows it, and a portrait screen keeps about
+80° of view across and moves the orders down the left edge.
 
 ## Survivability
 
